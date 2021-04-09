@@ -1,0 +1,17 @@
+{
+  "name": "Canvas",
+  "version": "0.0.1",
+  "main": "index.js",
+  "author": "Maxibax <priymak615@gmail.com>",
+  "license": "MIT",
+  "scripts": {
+    "dev": "parcel src/index.html -p 4200 --open",
+    "build": "parcel build --no-content-hash src/index.html -d build --public-url ."
+  },
+  "dependencies": {
+    "bootstrap": "^4.6.0"
+  },
+  "devDependencies": {
+    "parcel-bundler": "^1.12.5"
+  }
+}
