@@ -1,4 +1,4 @@
-#Графики на чистом Ja
+##Графики на чистом JavaScript
 
 ```bash
 # install dependencies

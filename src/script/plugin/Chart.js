@@ -1,7 +1,13 @@
-import computeBoundaries from "./help/computeBoundaries"
-import proxyHandler from "./help/proxyHandler"
+// Class
+import SliderChart from "./SliderChart"
+// Event
 import mouseleave from './events/mouseleave'
 import mousemove from "./events/mousemove"
+// Helpers
+import computeBoundaries from "./help/computeBoundaries"
+import computeYRatio from "./help/computeYRatio"
+import computeXRatio from "./help/computeXRatio"
+import proxyHandler from "./help/proxyHandler"
 import toCords from "./help/toCords"
 import toDate from "./help/toDate"
 import isOver from "./help/isOver"
@@ -11,22 +17,24 @@ import css from "./help/css"
 
 class Chart {
     constructor(root, data) {
-        console.log(data)
-
-        this.WIDHT = 600
+        // CONSTANTS
+        this.WIDTH = 600
         this.HEIGHT = 300
         this.PADDING = 40
-        this.DPI_WIDHT = this.WIDHT * 2
+        this.DPI_WIDTH = this.WIDTH * 2
         this.DPI_HEIGHT = this.HEIGHT * 2
-        this.VIEW_WIDHT = this.DPI_WIDHT
+        this.VIEW_WIDTH = this.DPI_WIDTH
         this.VIEW_HEIGHT = this.DPI_HEIGHT - this.PADDING * 2
         this.ROWS_COUNT = 6
         this.COLS_COUNT = 6
         this.CIRCLE_RADIUS = 8
-
+        // DOM
         this.$root = document.body.querySelector(root)
-        this.$canvas = this.$root.querySelector('canvas')
+        this.$canvas = this.$root.querySelector('[data-el="main"]')
+        this.$sliderChart = this.$root.querySelector('[data-el="slider"]')
         this.$tip = tooltip(this.$root.querySelector("[data-el='tooltip']"))
+
+        this.slider = new SliderChart(this.$sliderChart, data, {WIDTH: this.WIDTH})
 
         this.cts = this.$canvas.getContext('2d')
         this.data = data
@@ -38,19 +46,31 @@ class Chart {
     }
 
     init() {
+        this.slider.subscribe(pos => this.proxy.pos = pos)
+
         this.paint()
         this.$canvas.addEventListener('mousemove', mousemove.bind(this))
         this.$canvas.addEventListener('mouseleave', mouseleave.bind(this))
     }
 
     paint() {
-        const [yMin, yMax] = computeBoundaries(this.data)
+        const length = this.data.columns[0].length
+        const leftIndex = Math.round(length * this.proxy.pos[0] / 100)
+        const rightIndex = Math.round(length * this.proxy.pos[1] / 100)
 
-        const xRatio = this.VIEW_WIDHT / (this.data.columns[0].length - 2)
-        const yRatio = this.VIEW_HEIGHT / (yMax - yMin)
+        const columns = this.data.columns.map(col => {
+            const res = col.slice(leftIndex, rightIndex)
+            if (typeof res[0] !== 'string') res.unshift(col[0])
+            return res
+        })
 
-        const xData = this.data.columns.filter(col => this.data.types[col[0]] !== 'line')[0]
-        const yData = this.data.columns.filter(col => this.data.types[col[0]] === 'line')
+        const [yMin, yMax] = computeBoundaries({columns, types: this.data.types})
+
+        const xRatio = computeXRatio(this.VIEW_WIDTH, columns[0].length)
+        const yRatio = computeYRatio(this.VIEW_HEIGHT, yMax, yMin)
+
+        const xData = columns.filter(col => this.data.types[col[0]] !== 'line')[0]
+        const yData = columns.filter(col => this.data.types[col[0]] === 'line')
 
         this.setSize()
         this.yAxis(yMin, yMax)
@@ -81,11 +101,11 @@ class Chart {
 
     setSize() {
         css(this.$canvas, {
-            width: this.WIDHT + 'px',
+            width: this.WIDTH + 'px',
             height: this.HEIGHT + 'px'
         })
 
-        this.$canvas.width = this.DPI_WIDHT
+        this.$canvas.width = this.DPI_WIDTH
         this.$canvas.height = this.DPI_HEIGHT
     }
     yAxis(yMin, yMax) {
@@ -104,7 +124,7 @@ class Chart {
 
             this.cts.fillText(text.toString(), 5, y + this.PADDING - 10)
             this.cts.moveTo(0, y + this.PADDING)
-            this.cts.lineTo(this.DPI_WIDHT, y + this.PADDING)
+            this.cts.lineTo(this.DPI_WIDTH, y + this.PADDING)
         }
 
         this.cts.stroke()
@@ -145,7 +165,7 @@ class Chart {
     }
 
     clear() {
-        this.cts.clearRect(0, 0, this.DPI_WIDHT, this.DPI_HEIGHT)
+        this.cts.clearRect(0, 0, this.DPI_WIDTH, this.DPI_HEIGHT)
     }
     destroy() {
         cancelAnimationFrame(this.raf)
