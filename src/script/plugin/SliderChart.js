@@ -3,22 +3,22 @@ import mousedown from "./events/slider/mousedown"
 import mouseup from "./events/slider/mouseup"
 // Help
 import computeBoundaries from "./help/computeBoundaries"
+import computeXRatio from "./help/computeXRatio"
+import computeYRatio from "./help/computeYRatio"
 import toCords from "./help/toCords"
 import line from "./help/line"
 import css from "./help/css"
-import computeXRatio from "./help/computeXRatio"
-import computeYRatio from "./help/computeYRatio"
 
 export default class SliderChart {
     constructor(root, data, constants) {
         // CONSTANTS
         this.WIDTH = constants.WIDTH
         this.MIN_WIDTH = this.WIDTH * .05 // 5%
-        this.HEIGHT = 40
-        this.PADDING = -5
+        this.HEIGHT = constants.HEIGHT
+        this.PADDING = -4
         this.DPI_WIDTH = this.WIDTH * 2
         this.DPI_HEIGHT = this.HEIGHT * 2
-        this.DEFAULT_WIDTH = this.WIDTH * .3 // 30%
+        this.DEFAULT_WIDTH = this.WIDTH * constants.DEFAULT_WIDTH // 30%
         // DOM
         this.$root = root
         this.$canvas = this.$root.querySelector('canvas')
@@ -81,7 +81,7 @@ export default class SliderChart {
 
         this.setSize()
 
-        yData.map(toCords(xRatio, yRatio, this)).forEach((coords, idx) => {
+        yData.map(toCords(xRatio, yRatio, yMin, this)).forEach((coords, idx) => {
             const color = this.data.colors[yData[idx][0]]
             line(this)(coords, {color})
         })

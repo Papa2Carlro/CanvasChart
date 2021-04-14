@@ -5,8 +5,8 @@ import mouseleave from './events/mouseleave'
 import mousemove from "./events/mousemove"
 // Helpers
 import computeBoundaries from "./help/computeBoundaries"
-import computeYRatio from "./help/computeYRatio"
 import computeXRatio from "./help/computeXRatio"
+import computeYRatio from "./help/computeYRatio"
 import proxyHandler from "./help/proxyHandler"
 import toCords from "./help/toCords"
 import toDate from "./help/toDate"
@@ -16,25 +16,36 @@ import line from "./help/line"
 import css from "./help/css"
 
 class Chart {
-    constructor(root, data) {
+    constructor(root, data, option) {
         // CONSTANTS
-        this.WIDTH = 600
-        this.HEIGHT = 300
-        this.PADDING = 40
+        this.WIDTH = option.width || 600
+        this.HEIGHT = option.height || 300
+        this.PADDING = option.padding || 40
         this.DPI_WIDTH = this.WIDTH * 2
         this.DPI_HEIGHT = this.HEIGHT * 2
         this.VIEW_WIDTH = this.DPI_WIDTH
         this.VIEW_HEIGHT = this.DPI_HEIGHT - this.PADDING * 2
-        this.ROWS_COUNT = 6
-        this.COLS_COUNT = 6
+        this.ROWS_COUNT = option.line.y || 6
+        this.COLS_COUNT = option.line.x || 6
         this.CIRCLE_RADIUS = 8
+        this.FONT_SIZE = option.fontSize || 20
+        this.TYPE = option.type || 'Line'
+        // Slider
+        this.SLIDER = option.slider.visible === undefined ? true : option.slider.visible
+        this.SLIDER_HEIGHT = option.slider.height ? option.slider.height : 40
+        this.SLIDER_DEFAULT_WIDTH = option.slider.defaultWidth ? option.slider.defaultWidth / 100 : .3 // 30%
         // DOM
         this.$root = document.body.querySelector(root)
+        this.setTemplate()
         this.$canvas = this.$root.querySelector('[data-el="main"]')
         this.$sliderChart = this.$root.querySelector('[data-el="slider"]')
         this.$tip = tooltip(this.$root.querySelector("[data-el='tooltip']"))
 
-        this.slider = new SliderChart(this.$sliderChart, data, {WIDTH: this.WIDTH})
+        this.slider = this.SLIDER ? new SliderChart(this.$sliderChart, data, {
+            WIDTH: this.WIDTH,
+            HEIGHT: this.SLIDER_HEIGHT,
+            DEFAULT_WIDTH: this.SLIDER_DEFAULT_WIDTH,
+        }) : undefined
 
         this.cts = this.$canvas.getContext('2d')
         this.data = data
@@ -45,8 +56,32 @@ class Chart {
         this.init()
     }
 
+    setTemplate() {
+        this.$root.classList.add('mxp-chart')
+
+        this.$root.insertAdjacentHTML('beforeend',`
+            <div data-el="tooltip" class="mxp-chart-tooltip"></div>
+            <canvas data-el="main"></canvas>
+
+            ${this.SLIDER
+                ? ` <div class="mxp-chart-slider" data-el="slider">
+                        <canvas></canvas>
+        
+                        <div class="mxp-chart-slider__left" data-el="left">
+                            <div class="mxp-chart-slider__arrow--left" data-el="arrow" data-type="left"></div>
+                        </div>
+        
+                        <div class="mxp-chart-slider__window" data-el="window" data-type="window"></div>
+        
+                        <div class="mxp-chart-slider__right" data-el="right">
+                            <div class="mxp-chart-slider__arrow--right" data-el="arrow" data-type="right"></div>
+                        </div>
+                    </div>`
+                : '' }`)
+    }
+
     init() {
-        this.slider.subscribe(pos => this.proxy.pos = pos)
+        this.SLIDER ? this.slider.subscribe(pos => this.proxy.pos = pos) : this.proxy.pos = [0, 100]
 
         this.paint()
         this.$canvas.addEventListener('mousemove', mousemove.bind(this))
@@ -76,7 +111,7 @@ class Chart {
         this.yAxis(yMin, yMax)
         this.xAxis(xData, yData, xRatio)
 
-        yData.map(toCords(xRatio, yRatio, this)).forEach((coords, idx) => {
+        yData.map(toCords(xRatio, yRatio, yMin, this)).forEach((coords, idx) => {
             const color = this.data.colors[yData[idx][0]]
             line(this)(coords, {color})
 
@@ -115,7 +150,7 @@ class Chart {
         this.cts.beginPath()
         this.cts.strokeStyle = '#bbb'
         this.cts.lineWidth = 1
-        this.cts.font = 'normal 20px Helvetica, sans-serif'
+        this.cts.font = `normal ${this.FONT_SIZE}px Helvetica, sans-serif`
         this.cts.fillStyle = '#96a2aa'
 
         for (let i = 1; i <= this.ROWS_COUNT; i++) {
@@ -134,6 +169,7 @@ class Chart {
         const {mouse} = this.proxy
         const step = Math.round(data.length / this.COLS_COUNT)
         this.cts.beginPath()
+        this.cts.font = `normal ${this.FONT_SIZE}px Helvetica, sans-serif`
 
         for (let i = 1; i < data.length; i++) {
             const x = xRatio * i
